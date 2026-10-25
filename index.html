@@ -132,6 +132,24 @@ canvas#screen{border-radius:0;image-rendering:pixelated;image-rendering:crisp-ed
 .btn,.seg,.seg button,details,.ticker{border-radius:2px}
 .btn{box-shadow:3px 3px #050a16}
 summary{color:#f3d04c}
+
+/* 16-bit team selection / schedule board */
+.tsb-picker{background:linear-gradient(145deg,#172d77,#09133c 65%,#070e2b);border:5px solid #839ccf;outline:3px solid #182350;box-shadow:inset 0 0 0 3px #c9d8ee,0 7px 0 #0a1030;padding:14px;color:#fff7cd;margin:14px 0;font-family:ui-monospace,monospace}
+.tsb-head{font-family:"Press Start 2P",monospace;color:#ffd64f;text-shadow:3px 3px #823b35;font-size:clamp(11px,1.7vw,17px);text-align:center;margin:8px 0 14px;line-height:1.8}
+.tsb-conferences{display:flex;justify-content:space-between;color:#bcd2ff;border-block:2px solid #718dc7;padding:8px 5px;margin-bottom:10px;font:bold 12px ui-monospace,monospace}
+.tsb-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(225px,1fr));gap:10px;max-height:360px;overflow-y:auto;padding:4px}
+.tsb-game{font:600 13px/1.45 ui-monospace,monospace;min-height:95px;text-align:left;color:#f7f7dd;background:#1b3980;border:2px solid #5274b8;border-radius:0;padding:10px;cursor:pointer;transition:background .1s}
+.tsb-game:hover,.tsb-game:focus-visible{background:#385da4;outline:2px solid #ffd65a;outline-offset:1px}
+.tsb-game[aria-pressed="true"]{border-color:#fff1a0;background:#42509d;box-shadow:inset 0 0 0 2px #e4bc45}
+.tsb-teamrow{display:flex;align-items:center;gap:9px;padding:2px 0}
+.tsb-emblem{display:inline-flex;align-items:center;justify-content:center;min-width:49px;min-height:28px;background:var(--team-color,#536997);border:2px solid #edf0ff;box-shadow:2px 2px #050b2c;font-weight:900;color:#fff;text-shadow:1px 1px #090e28}
+.tsb-vs{font-size:10px;color:#ffdf66;min-width:22px}
+.tsb-score{margin-left:auto;color:#fff49c;font-size:15px}
+.tsb-meta{border-top:1px solid #678bc8;padding-top:6px;margin-top:6px;color:#bddbff;font-size:11px}
+.tsb-controls{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.tsb-prompt{color:#ffde5f;font:11px/1.6 "Press Start 2P",monospace}
+.tsb-picker .btn{border-radius:0}
+@media(max-width:550px){.tsb-picker{padding:7px}.tsb-grid{grid-template-columns:1fr;max-height:420px}}
 </style>
 </head>
 <body>
@@ -182,8 +200,14 @@ summary{color:#f3d04c}
       <label class="field">Date (leave blank for this week)<input type="date" id="liveDate"></label>
       <button class="btn ghost" id="liveFind">Find games</button>
     </div>
+    <div class="tsb-picker" aria-label="Tecmo-inspired NFL matchup select">
+      <div class="tsb-head">SELECT YOUR GAME</div>
+      <div class="tsb-conferences"><span>★ AFC</span><span>2026 NFL • LIVE SCOREBOARD</span><span>NFC ★</span></div>
+      <div id="tsbGameGrid" class="tsb-grid" role="group" aria-label="Choose NFL matchup"></div>
+      <div class="tsb-controls"><span class="tsb-prompt" id="tsbSelected">CHOOSE A MATCHUP</span><button type="button" class="btn" id="tsbWatch">▶ START GAME</button></div>
+    </div>
     <div class="row">
-      <select id="liveGame" aria-label="Game"><option value="">Find games first</option></select>
+      <select id="liveGame" aria-label="Game" style="max-width:100%;"><option value="">Find games first</option></select>
       <select id="liveFrom" aria-label="Where to start">
         <option value="latest">Start at the latest play</option>
         <option value="kickoff">Replay from kickoff</option>
@@ -625,6 +649,22 @@ const FRAME_ROWS = {
     '................', '................', '................'
   ]
 };
+// Distinct contact and stride poses in the optional 16-bit animation set.
+function shiftFrame(rows, dx, legShift) {
+  const width = rows[0].length;
+  return rows.map((line,y) => {
+    const move = y < 5 ? dx : y > 10 ? legShift : 0;
+    if (move > 0) return '.'.repeat(move) + line.slice(0,width-move);
+    if (move < 0) return line.slice(-move)+'.'.repeat(-move);
+    return line;
+  });
+}
+FRAME_ROWS.run3 = shiftFrame(FRAME_ROWS.run, 1, -1);
+FRAME_ROWS.run4 = shiftFrame(FRAME_ROWS.run2, -1, 1);
+FRAME_ROWS.stance = FRAME_ROWS.idle.map((row,y) => y >= 12 ? row.replace(/S/g,'P') : row);
+FRAME_ROWS.catch = FRAME_ROWS.pass.map((row,y) => y === 5 ? '..KjJJJJJJK....' : row);
+FRAME_ROWS.throw = FRAME_ROWS.pass.map((row,y) => y === 1 ? '......HHhhHHK...' : row);
+FRAME_ROWS.hit = shiftFrame(FRAME_ROWS.tackle, 1, 0);
 const ORIGINAL_TOP = ['...HhhH...', '..HHhhHH..', '..HHHHKmm.', '..HHHHKmm.', '...HHHHm..', '..jJJJJj..', '.jJJJJJJj.', '.KJJnnJJK.', '..JJnnJJ..', '..JJJJJJ..', '..bbbbbb..'];
 const ORIGINAL_LEG_STAND = ['..PPPPPP..', '..pPP.pPP.', '..SsS.SsS.', '..ZZZ.ZZZ.'];
 const ORIGINAL_LEG_RUN = ['..PPPPPP..', '.pPP..pPP.', '.SsS...SsS', 'ZZZ....ZZZ'];
@@ -2909,8 +2949,9 @@ function actorSpriteKind(a, s) {
   if (a.cheerUntil > clockT && !a.moving) return ((Math.floor(clockT * 5 + a.seed) % 2) ? 'cheer' : 'cheer2');
   if (a.mode === 'block') return ((Math.floor(a.anim * 1.4 + a.seed) % 2) ? 'block' : 'block2');
   if (a === s.tackler && s.carrier && !s.ball.flight && Math.abs(a.x - s.carrier.x) < 1.4 && Math.abs(a.y - s.carrier.y) < 1.6) return 'tackle';
-  if (a === s.ball.holder && !s.ball.flight && a.role === 'QB' && s.t > 0.35 && s.t < 1.2) return 'pass';
-  if (a.moving) return ((Math.floor(a.anim * 1.7 + a.seed) % 2) ? 'run' : 'run2');
+  if (a === s.ball.holder && !s.ball.flight && a.role === 'QB' && s.t > 0.35 && s.t < 1.2) return Math.floor(a.anim * 2) % 2 ? 'throw' : 'pass';
+  if (a.moving) return ['run','run3','run2','run4'][Math.floor(a.anim * 3.2 + a.seed) % 4];
+  if (phase === 'pre' && LINE_ROLES.has(a.role)) return 'stance';
   return 'idle';
 }
 function drawActors(s, cx) {
@@ -3968,7 +4009,7 @@ requestAnimationFrame(tick);
 <script>
 (() => {
   const $ = id => document.getElementById(id);
-  const st = $('liveStatus'), sel = $('liveGame');
+  const st = $('liveStatus'), sel = $('liveGame'), grid = $('tsbGameGrid'), selectedLabel = $('tsbSelected');
   const local = /^https?:$/.test(location.protocol);
   if (!local) {
     st.textContent = 'Live mode requires the game server. Open this page through its HTTP(S) address, not as a local file.';
@@ -3988,13 +4029,46 @@ requestAnimationFrame(tick);
     list: async date => (await api('/api/games' + (date ? '?date=' + date : ''))).games,
     watch: (id, from) => watch(id, from)
   };
+  let matchups = [];
+  function makeTeamBadge(ab) {
+    const span = document.createElement('span'); span.className = 'tsb-emblem';
+    const theme = { BUF:'#1451a0', MIA:'#008d91', NYJ:'#176b46', NE:'#183b67', BAL:'#41256e', CIN:'#ea6b22', CLE:'#6c381e', PIT:'#31343c', HOU:'#10244b', IND:'#2159a2', JAX:'#117b78', TEN:'#405e96', KC:'#be2737', LV:'#37373b', DEN:'#f26524', LAC:'#f3b934', DAL:'#405b8a', NYG:'#28479e', PHI:'#07574e', WAS:'#841d31', GB:'#1f5d45', MIN:'#4f2e8a', CHI:'#1d325e', DET:'#2279aa', ATL:'#b42332', CAR:'#1674a8', NO:'#b69b55', TB:'#a32b37', SF:'#a32930', LA:'#2559a5', SEA:'#165064', ARI:'#a52735' };
+    span.style.setProperty('--team-color', theme[ab] || '#53739b'); span.textContent = ab || 'NFL';
+    return span;
+  }
+  function renderMatchups() {
+    grid.replaceChildren();
+    matchups.forEach(g => {
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'tsb-game';
+      btn.setAttribute('aria-pressed', String(sel.value === g.id));
+      const name = ab => (window.Gridiron && Gridiron.teamName) ? Gridiron.teamName(ab) : ab;
+      for (const [ab, pts, side] of [[g.away,g.awayScore,'VIS'],[g.home,g.homeScore,'HOME']]) {
+        const row=document.createElement('div'); row.className='tsb-teamrow'; row.append(makeTeamBadge(ab));
+        const label=document.createElement('span'); label.textContent = side + ' ' + name(ab); row.append(label);
+        if(g.state !== 'pre') {const score=document.createElement('strong');score.className='tsb-score';score.textContent=String(pts ?? 0);row.append(score);}
+        btn.append(row);
+      }
+      const meta=document.createElement('div');meta.className='tsb-meta';meta.textContent=(g.state === 'in'?'● LIVE   ':g.state === 'post'?'FINAL   ':'UPCOMING   ')+(g.detail||'');btn.append(meta);
+      btn.addEventListener('click',()=>{sel.value=g.id;syncChoice();});
+      btn.addEventListener('dblclick',()=>watch(g.id));
+      grid.append(btn);
+    });
+    syncChoice();
+  }
+  function syncChoice() {
+    for (const b of grid.children) b.setAttribute('aria-pressed',String(matchups[Array.from(grid.children).indexOf(b)]?.id===sel.value));
+    const g=matchups.find(x=>x.id===sel.value);
+    selectedLabel.textContent = g ? `${g.away} VS ${g.home} — READY!` : 'CHOOSE A MATCHUP';
+  }
+  sel.addEventListener('change', syncChoice);
+  $('tsbWatch').addEventListener('click',()=>watch());
   async function findGames() {
     st.textContent = 'Looking up games…';
     try {
       const d = $('liveDate').value.replace(/-/g, '');
       const j = await api('/api/games' + (d ? '?date=' + d : ''));
-      sel.textContent = '';
-      if (!j.games.length) { sel.append(new Option('No games on that date', '')); st.textContent = 'No NFL games found. Try another date.'; return; }
+      sel.textContent = ''; matchups = j.games || [];
+      if (!j.games.length) { grid.replaceChildren(); selectedLabel.textContent='NO MATCHUPS'; sel.append(new Option('No games on that date', '')); st.textContent = 'No NFL games found. Try another date.'; return; }
       let pickIdx = -1;
       j.games.forEach((g, i) => {
         const score = g.state === 'pre' ? '' : ` ${g.awayScore}-${g.homeScore}`;
@@ -4002,7 +4076,8 @@ requestAnimationFrame(tick);
         sel.append(new Option(`${nm(g.away)} at ${nm(g.home)}${score}, ${g.detail}`, g.id));
         if (g.state === 'in' && pickIdx < 0) pickIdx = i;
       });
-      if (pickIdx >= 0) sel.selectedIndex = pickIdx;
+      if (pickIdx >= 0) sel.selectedIndex = pickIdx; else if(j.games.length) sel.selectedIndex=0;
+      renderMatchups();
       st.textContent = `Found ${j.games.length} games. Pick one and press Watch.`;
     } catch (e) { st.textContent = `Couldn’t load games: ${e.message}. Check the Docker container logs and that its server can reach ESPN.`; }
   }
