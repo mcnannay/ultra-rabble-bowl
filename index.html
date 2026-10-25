@@ -235,6 +235,15 @@ summary{color:#f3d04c}
         </select>
       </label>
     </div>
+    <div class="row">
+      <label class="field">On-field player graphics
+        <select id="playerGraphics">
+          <option value="original">Original graphics (default)</option>
+          <option value="tecmo">Tecmo-inspired 16-bit sprites</option>
+        </select>
+      </label>
+    </div>
+    <p class="help">Switch player sprites instantly; your preference is saved in this browser.</p>
     <label class="toggle"><input type="checkbox" id="crt" checked> CRT scanlines in full screen</label>
     <p class="help">Pixel-perfect scales every art pixel by a whole number, so the 640 × 360 picture fills 1080p, 1440p and 4K screens exactly, with text drawn at your screen’s full resolution. Double-click the field, or press F, to go full screen.</p>
   </details>
@@ -616,6 +625,15 @@ const FRAME_ROWS = {
     '................', '................', '................'
   ]
 };
+const ORIGINAL_TOP = ['...HhhH...', '..HHhhHH..', '..HHHHKmm.', '..HHHHKmm.', '...HHHHm..', '..jJJJJj..', '.jJJJJJJj.', '.KJJnnJJK.', '..JJnnJJ..', '..JJJJJJ..', '..bbbbbb..'];
+const ORIGINAL_LEG_STAND = ['..PPPPPP..', '..pPP.pPP.', '..SsS.SsS.', '..ZZZ.ZZZ.'];
+const ORIGINAL_LEG_RUN = ['..PPPPPP..', '.pPP..pPP.', '.SsS...SsS', 'ZZZ....ZZZ'];
+const ORIGINAL_LEG_RUN2 = ['..PPPPPP..', '...pPPP...', '...SsSS...', '...ZZZZ...'];
+const ORIGINAL_LIE = ['......jJJj.HhH.', 'ZZSsPPbJJJJHHHm', 'ZZSsPPbJJnJHHKm', '......KJJJ.HHH.'];
+const ORIGINAL_CHEER_UP = ['.K......K.', '.j.HhhH.j.', '.jHHhhHHj.', '.jHHHHKmm.', '.jHHHHKmm.', '.j.HHHHm..', '.jjJJJJjj.', '..JJJJJJ..', '..JJnnJJ..', '..JJJJJJ..', '..bbbbbb..'];
+const ORIGINAL_CHEER_OUT = ['...HhhH...', 'K.HHhhHH.K', 'j.HHHHKmmj', 'j.HHHHKmmj', 'j..HHHHm.j', 'jjjJJJJjjj', '..JJJJJJ..', '..JJnnJJ..', '..JJJJJJ..', '..JJJJJJ..', '..bbbbbb..'];
+// Original player art is the default; the alternate larger sprite frames are opt-in.
+let playerGraphics = 'original';
 const spriteCache = new Map();
 function makeSprite(rows, colorAt, flip) {
   const h = rows.length, w = rows[0].length;
@@ -643,9 +661,13 @@ function palFor(team, tone, kind) {
 }
 function sprite(team, kind, tone, flip) {
   kind = FRAME_ROWS[kind] ? kind : 'idle';
-  const key = team + '|' + kind + '|' + (tone == null ? 'x' : tone) + '|' + (flip ? 1 : 0);
+  const key = playerGraphics + '|' + team + '|' + kind + '|' + (tone == null ? 'x' : tone) + '|' + (flip ? 1 : 0);
   let c = spriteCache.get(key); if (c) return c;
-  c = makeSprite(FRAME_ROWS[kind], palFor(team, tone, kind), flip);
+  const originalRows = kind === 'lie' ? ORIGINAL_LIE
+    : kind === 'cheer' ? ORIGINAL_CHEER_UP.concat(ORIGINAL_LEG_STAND)
+    : kind === 'cheer2' ? ORIGINAL_CHEER_OUT.concat(ORIGINAL_LEG_RUN)
+    : ORIGINAL_TOP.concat(kind === 'run' ? ORIGINAL_LEG_RUN : kind === 'run2' ? ORIGINAL_LEG_RUN2 : ORIGINAL_LEG_STAND);
+  c = makeSprite(playerGraphics === 'original' ? originalRows : FRAME_ROWS[kind], palFor(team, tone, kind), flip);
   spriteCache.set(key, c); return c;
 }
 
@@ -2870,7 +2892,7 @@ function hopZ(a, s) {
   if (a.hopT != null) { const u = (s.t - a.hopT) / 0.5; if (u >= 0 && u < 1) return Math.round(Math.sin(u * Math.PI) * 5); }
   return 0;
 }
-const FIELD_SC = 0.98; // scale for the larger Tecmo-inspired on-field players
+const FIELD_SC = 0.98; // selectable on-field player graphics
 const LINE_ROLES = new Set(['C', 'LG', 'RG', 'LT', 'RT', 'TE', 'DE1', 'DT1', 'DT2', 'DE2', 'OL', 'DL', 'LW', 'RW', 'L1', 'L2', 'L3', 'L4', 'L5', 'L6']);
 const ROLE_NUM = { QB: 12, RB: 28, X: 81, Z: 11, SL: 17, TE: 87, C: 60, LG: 65, RG: 66, LT: 72, RT: 76, DE1: 91, DT1: 97, DT2: 93, DE2: 99, LB1: 54, MLB: 52, LB2: 56, CB1: 24, CB2: 21, FS: 31, SS: 38, K: 3, P: 7, H: 9, KR: 84, PR: 83 };
 function fieldPose(a, s) {
@@ -2907,7 +2929,7 @@ function drawActors(s, cx) {
     const kind = actorSpriteKind(a, s);
     const tone = a.team === 'R' ? 2 : (a.tone != null ? a.tone : num % 6);
     const spr = sprite(a.team, kind, tone, a.face < 0);
-    const sc = FIELD_SC * (a.lie ? 0.92 : kind === 'block' || kind === 'block2' ? 0.98 : 1);
+    const sc = (playerGraphics === 'original' ? 0.92 : FIELD_SC) * (a.lie ? 0.92 : kind === 'block' || kind === 'block2' ? 0.98 : 1);
     const w = Math.round(spr.width * sc), h = Math.round(spr.height * sc);
     const bob = Math.round(hopZ(a, s) * 0.55);
     const x = Math.round(sx - w / 2);
@@ -3593,6 +3615,15 @@ $('crt').addEventListener('change', e => { crtOn = e.target.checked; savePrefs()
 $('scaleMode').addEventListener('change', e => { fillMode = e.target.value === 'fill'; if (stageOn) sizeStage(); savePrefs(); });
 ['pointerdown', 'keydown'].forEach(ev => document.addEventListener(ev, () => { Snd.unlock(); startIntroMusic(); }, { passive: true }));
 try { const sv = JSON.parse(localStorage.getItem('g16prefs') || '{}'); if (sv.snd === false) { Snd.on = false; $('snd').checked = false; } if (sv.cuts === false) { cutsOn = false; $('cuts').checked = false; } if (sv.lead === false) { leadOn = false; $('lead').checked = false; } if (sv.annc === false) { annOn = false; $('annc').checked = false; } if (sv.voices === false) { voicesOn = false; $('voices').checked = false; } if (sv.crt === false) { crtOn = false; $('crt').checked = false; } if (sv.fill) { fillMode = true; $('scaleMode').value = 'fill'; } } catch (e) { /* storage unavailable */ }
+// Start every new browser on the original artwork unless the user has explicitly chosen otherwise.
+try { if (localStorage.getItem('g16playerGraphics') === 'tecmo') playerGraphics = 'tecmo'; } catch (e) { /* storage unavailable */ }
+$('playerGraphics').value = playerGraphics;
+$('playerGraphics').addEventListener('change', e => {
+  playerGraphics = e.target.value === 'tecmo' ? 'tecmo' : 'original';
+  spriteCache.clear();
+  drawPreviews();
+  try { localStorage.setItem('g16playerGraphics', playerGraphics); } catch (err) { /* storage unavailable */ }
+});
 const savePrefs = () => { try { localStorage.setItem('g16prefs', JSON.stringify({ snd: Snd.on, cuts: cutsOn, crt: crtOn, fill: fillMode, lead: leadOn, annc: annOn, voices: voicesOn })); } catch (e) { /* storage unavailable */ } };
 $('snd').addEventListener('change', e => { Snd.on = e.target.checked; if (!Snd.on) Snd.musicStop(0.2); else startIntroMusic(); savePrefs(); });
 $('lead').addEventListener('change', e => { leadOn = e.target.checked; savePrefs(); });
