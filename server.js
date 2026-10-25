@@ -170,13 +170,13 @@ const PA_LINES = {
   review: 'This play is under review.', reversed: 'The ruling is reversed!', stands: 'The ruling on the field stands!', confirmed: 'The call is confirmed!',
   quarter: "That's the end of the quarter!", final: "That's the ballgame!", official: 'Official timeout.', twomin: 'Two-minute warning.', timeout: 'Timeout on the field.'
 };
-const VOICE_VER = 'v4';
+const VOICE_VER = 'v5-broadcast';
 const voiceFile = key => path.join(CACHE_DIR, 'voice', `${key}-${VOICE_VER}.wav`);
 const xml = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
-// QB: slightly low, very fast and clipped. PA: bright, high-energy stadium read.
+// QB: clipped cadence. PA: warm baritone, measured broadcast delivery with more emphasis on scoring plays.
 const ssmlFor = (key, text) => QB_LINES[key]
   ? `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><prosody pitch="low" rate="x-fast" volume="x-loud"><emphasis level="strong">${xml(text)}</emphasis></prosody></speak>`
-  : `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><prosody pitch="high" rate="fast" volume="x-loud"><emphasis level="strong">${xml(text)}</emphasis></prosody></speak>`;
+  : `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US"><prosody pitch="low" rate="medium" volume="x-loud"><emphasis level="strong">${xml(text)}</emphasis></prosody></speak>`;
 let voiceJob = null;
 function makeVoices() {
   if (voiceJob) return voiceJob;
@@ -213,7 +213,13 @@ function makeVoices() {
       const run = i => {
         if (i >= todo.length) return resolve();
         const k = todo[i], qb = !!QB_LINES[k];
-        execFile('espeak-ng', ['-v', qb ? 'en-us+m3' : 'en-us+f3', '-s', qb ? '185' : '155', '-p', qb ? '30' : '58', '-a', '180', '-w', voiceFile(k), all[k]],
+        // Avoid falsetto PA: synthesize a steady male baritone and vary delivery by play significance.
+        const highlight = /^(touchdown|int|fumble|run|catch|return|sack|safety|good|nogood)/.test(k);
+        const tempo = qb ? '185' : highlight ? '163' : '149';
+        const pitch = qb ? '34' : highlight ? '42' : '34';
+        const amplitude = qb ? '180' : highlight ? '200' : '175';
+        const voice = qb ? 'en-us+m3' : 'en-us+m7';
+        execFile('espeak-ng', ['-v', voice, '-s', tempo, '-p', pitch, '-a', amplitude, '-g', qb ? '0' : '5', '-w', voiceFile(k), all[k]],
           { timeout: 20000 }, err => err ? reject(err) : run(i + 1));
       };
       run(0);
