@@ -2704,7 +2704,7 @@ function sayWord(w, shown) {
 }
 async function loadVoices() {
   if (!LOCAL) return;
-  voiceStatus('Recording the voices with your computer’s built-in voices. The first time takes about a minute…');
+  voiceStatus('Preparing broadcast-style commentary voices. The first time takes about a minute…');
   let keys = ['down', 'set', 'go'].concat(Object.keys(PA_TEXT));
   try { const r = await fetch('/api/voice-pack', { cache: 'no-store' }); const j = await r.json(); if (j && j.qb) keys = Object.keys(j.qb).concat(Object.keys(j.pa)); } catch (e) { /* use the built-in list */ }
   let n = 0;
@@ -2714,7 +2714,7 @@ async function loadVoices() {
     try { const r = await fetch('/api/voice?key=' + k); if (r.ok) await Snd.loadVoice(k, await r.arrayBuffer()); } catch (e) { /* falls back to the browser voice */ }
     voiceStatus(`Loading voices… ${n} of ${keys.length}`);
   }
-  voiceStatus(keys.every(k => Snd.hasVoice(k)) ? 'Voices ready. These are the exact voices and stadium effects used in the game.' : 'Some voices couldn’t be recorded, so those lines use your browser’s voice instead.');
+  voiceStatus(keys.every(k => Snd.hasVoice(k)) ? 'Broadcast commentary ready. These are the voice clips used in the game.' : 'Some voices couldn’t be recorded, so those lines use your browser’s voice instead.');
 }
 function voiceStatus(t) { const el = document.getElementById('vStatus'); if (el) el.textContent = t; }
 // ---------- stadium PA announcer ----------
@@ -2740,7 +2740,7 @@ const PA = {
     const sp = window.speechSynthesis;
     if (!sp || typeof SpeechSynthesisUtterance === 'undefined') return;
     paBusy = now + wait + 1.6;
-    setTimeout(() => { try { const u = new SpeechSynthesisUtterance(PA_TEXT[k]); u.rate = 1.15; u.pitch = 1.15; u.volume = 0.5; sp.speak(u); } catch (e) { /* no voice */ } }, wait * 1000);
+    setTimeout(() => { try { const u = new SpeechSynthesisUtterance(PA_TEXT[k]); u.rate = 0.98; u.pitch = 0.77; u.volume = 0.5; sp.speak(u); } catch (e) { /* no voice */ } }, wait * 1000);
   }
 };
 function announceWhistle(o, p) {
@@ -3912,7 +3912,7 @@ function previewVoice(key, kind) {
   const play = () => {
     if (Snd.voice(key, kind)) return;
     const sp = window.speechSynthesis; if (!sp || typeof SpeechSynthesisUtterance === 'undefined') return;
-    const u = new SpeechSynthesisUtterance((kind === 'qb' ? QB_TEXT : PA_TEXT)[key]); u.rate = kind === 'qb' ? 1.4 : 1.15; u.pitch = kind === 'qb' ? 0.9 : 1.15; u.volume = 0.5; sp.cancel(); sp.speak(u);
+    const u = new SpeechSynthesisUtterance((kind === 'qb' ? QB_TEXT : PA_TEXT)[key]); u.rate = kind === 'qb' ? 1.4 : 0.98; u.pitch = kind === 'qb' ? 0.9 : 0.77; u.volume = 0.5; sp.cancel(); sp.speak(u);
   };
   Snd.resume().then(play, play);
 }
