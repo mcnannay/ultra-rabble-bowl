@@ -1,0 +1,7 @@
+.git
+.github
+node_modules
+cache
+*.zip
+.env
+.DS_Store
