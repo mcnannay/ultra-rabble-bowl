@@ -150,6 +150,31 @@ summary{color:#f3d04c}
 .tsb-prompt{color:#ffde5f;font:11px/1.6 "Press Start 2P",monospace}
 .tsb-picker .btn{border-radius:0}
 @media(max-width:550px){.tsb-picker{padding:7px}.tsb-grid{grid-template-columns:1fr;max-height:420px}}
+
+/* The entire matchup selector lives in the on-screen game viewport. */
+.bezel{position:relative}
+.ingame-select{position:absolute;z-index:12;inset:8px;display:flex;flex-direction:column;overflow:hidden;background:#0b1b53;color:#fff5c6;border:3px solid #e6c34f;box-shadow:inset 0 0 0 3px #274b96,0 0 22px #0009;font:11px/1.25 ui-monospace,monospace}
+.ingame-select[hidden]{display:none!important}
+.ingame-header{background:#172958;border-bottom:2px solid #e8c44c;display:flex;justify-content:space-between;align-items:center;padding:4px 9px;font:bold 11px ui-monospace,monospace;letter-spacing:1px}
+.ingame-header button,.ingame-bottom button{background:#28447a;border:1px solid #d4bc61;color:#ffe6a2;font:inherit;cursor:pointer;padding:4px 7px}
+.ingame-select .tsb-picker{background:transparent;outline:0;box-shadow:none;border:0;padding:0 9px;min-height:0;flex:1;display:flex;flex-direction:column;margin:0}
+.ingame-select .tsb-head{font-size:13px;margin:4px 0 2px;line-height:1.4}
+.ingame-select .tsb-conferences{font-size:9px;margin-bottom:4px;padding:3px 2px}
+.ingame-select .tsb-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;max-height:none;min-height:0;flex:1;overflow-y:auto;padding:3px}
+.ingame-select .tsb-game{min-width:0;padding:5px!important;font-size:10px}
+.ingame-select .tsb-teamrow{min-width:0;gap:3px;font-size:10px}
+.ingame-select .tsb-teamrow span:not(.tsb-emblem){overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ingame-select .tsb-emblem{font-size:9px;min-width:25px;width:25px;height:20px;line-height:20px}
+.ingame-select .tsb-meta{font-size:9px}
+.ingame-select .tsb-controls{margin:3px 0;display:flex;align-items:center;gap:4px;padding:3px}
+.ingame-select .tsb-controls .btn{font-size:10px;padding:5px 9px}
+.ingame-bottom{display:flex;gap:8px;align-items:center;justify-content:space-between;background:#13295a;padding:4px 9px;border-top:2px solid #668bce}
+.ingame-bottom label{display:flex;align-items:center;gap:6px;font-size:10px}
+.ingame-bottom select{padding:3px 5px;font-size:10px;max-width:180px}
+.ingame-help{text-align:center;margin:2px 0 4px;color:#a9c8ff;font:9px ui-monospace,monospace}
+#stageSelectMount{position:absolute;inset:0;pointer-events:none;display:flex;justify-content:center;align-items:center}
+#stageSelectMount>.ingame-select{position:relative;inset:auto;width:min(96vw,960px);height:min(78vh,540px);pointer-events:auto}
+@media(max-width:690px){.ingame-select .tsb-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ingame-select .tsb-head{font-size:10px}.ingame-select .tsb-game{font-size:9px}}
 </style>
 </head>
 <body>
@@ -157,10 +182,22 @@ summary{color:#f3d04c}
   <h1 class="px">ULTRA RABBLE BOWL <span style="color:#ffd43b">III</span></h1>
   <p class="sub">16-bit Final Edition: an SNES-inspired live football broadcast with pixel-art players, classic turf, retro score graphics, and arcade replays. Tap the screen to skip a cutscene.</p>
 
-  <div class="bezel"><canvas id="screen" width="640" height="360" aria-label="Animated 32-bit football field showing the current play"></canvas></div>
+  <div class="bezel"><canvas id="screen" width="640" height="360" aria-label="Animated 32-bit football field showing the current play"></canvas>
+    <div id="inGameSelect" class="ingame-select" role="dialog" aria-label="Select NFL game" aria-modal="false">
+      <div class="ingame-header"><span>ULTRA RABBLE BOWL III</span><button type="button" id="ingameClose" aria-label="Close selection screen">✕</button></div>
+    <div class="tsb-picker" aria-label="Tecmo-inspired NFL matchup select">
+      <div class="tsb-head">SELECT YOUR GAME</div>
+      <div class="tsb-conferences"><span>★ AFC</span><span>2026 NFL • LIVE SCOREBOARD</span><span>NFC ★</span></div>
+      <div id="tsbGameGrid" class="tsb-grid" role="group" aria-label="Choose NFL matchup"></div>
+      <div class="tsb-controls"><span class="tsb-prompt" id="tsbSelected">CHOOSE A MATCHUP</span><button type="button" class="btn" id="tsbWatch">▶ START GAME</button></div>
+    </div>
+      <div class="ingame-bottom"><label>PLAYER ART <select id="ingameGraphics"><option value="original">ORIGINAL</option><option value="tecmo">16-BIT ALTERNATE</option></select></label><button type="button" id="ingameRefresh">↻ REFRESH</button><button type="button" id="ingameAdvanced">OPTIONS ▾</button></div>
+      <p class="ingame-help" id="ingameHelp">↑ ↓ Select game · Enter Start · G Graphics · Esc Close</p>
+    </div>
+  </div>
 
   <div id="stage" aria-hidden="true">
-    <canvas id="big" aria-label="Full-screen view of the field"></canvas>
+    <canvas id="big" aria-label="Full-screen view of the field"></canvas><div id="stageSelectMount"></div>
     <p class="stage-hint">Press M for the menu, V for voices, F or Esc to exit. Space pauses, the arrow keys step through plays, and R replays the current play.</p>
     <div class="stage-bar">
       <button class="btn" id="sPrev">Previous play</button>
@@ -194,17 +231,11 @@ summary{color:#f3d04c}
     <label class="toggle"><input type="checkbox" id="annc" checked> Announcer</label>
   </div>
 
-  <details open class="live">
+  <details class="live" id="advancedLive">
     <summary>Live game</summary>
     <div class="row">
       <label class="field">Date (leave blank for this week)<input type="date" id="liveDate"></label>
       <button class="btn ghost" id="liveFind">Find games</button>
-    </div>
-    <div class="tsb-picker" aria-label="Tecmo-inspired NFL matchup select">
-      <div class="tsb-head">SELECT YOUR GAME</div>
-      <div class="tsb-conferences"><span>★ AFC</span><span>2026 NFL • LIVE SCOREBOARD</span><span>NFC ★</span></div>
-      <div id="tsbGameGrid" class="tsb-grid" role="group" aria-label="Choose NFL matchup"></div>
-      <div class="tsb-controls"><span class="tsb-prompt" id="tsbSelected">CHOOSE A MATCHUP</span><button type="button" class="btn" id="tsbWatch">▶ START GAME</button></div>
     </div>
     <div class="row">
       <select id="liveGame" aria-label="Game" style="max-width:100%;"><option value="">Find games first</option></select>
@@ -4060,8 +4091,37 @@ requestAnimationFrame(tick);
     const g=matchups.find(x=>x.id===sel.value);
     selectedLabel.textContent = g ? `${g.away} VS ${g.home} — READY!` : 'CHOOSE A MATCHUP';
   }
+  const inGame = $('inGameSelect');
+  const showInGame = () => { inGame.hidden=false; inGame.removeAttribute('aria-hidden'); if (grid.children.length) grid.querySelector('[aria-pressed="true"]')?.focus(); };
+  const hideInGame = () => { inGame.hidden=true; inGame.setAttribute('aria-hidden','true'); };
+  window.GameSelectUI = {show:showInGame, hide:hideInGame, get open(){return !inGame.hidden;}};
+  $('ingameClose').addEventListener('click',hideInGame);
+  $('ingameRefresh').addEventListener('click',findGames);
+  $('ingameAdvanced').addEventListener('click',()=>{ $('advancedLive').open=true; $('advancedLive').scrollIntoView({behavior:'smooth',block:'start'}); });
+  const art = $('ingameGraphics');
+  const syncArt = () => { const original = $('playerGraphics'); if(original) art.value=original.value; };
+  syncArt();
+  art.addEventListener('change',()=>{ const original = $('playerGraphics'); if(original){original.value=art.value; original.dispatchEvent(new Event('change',{bubbles:true}));} });
+  $('playerGraphics')?.addEventListener('change',syncArt);
+  grid.addEventListener('keydown',e=>{
+    const children=Array.from(grid.children); let i=children.indexOf(document.activeElement);
+    if(e.key==='Enter'||e.key===' '){e.preventDefault();if(i>=0){sel.value=matchups[i].id;syncChoice();watch().then(ok=>{if(ok)hideInGame();});}return;}
+    const delta = e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:e.key==='ArrowUp'?-3:e.key==='ArrowDown'?3:0;
+    if(delta&&children.length){e.preventDefault();i=(Math.max(0,i)+delta+children.length)%children.length;children[i].focus();sel.value=matchups[i].id;syncChoice();}
+  });
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'&&!inGame.hidden){e.stopPropagation();hideInGame();}
+    if((e.key==='g'||e.key==='G')&&!inGame.hidden&&!/INPUT|SELECT|TEXTAREA/.test(document.activeElement?.tagName||'')){art.value=art.value==='original'?'tecmo':'original';art.dispatchEvent(new Event('change'));}
+  },true);
+  $('tsbWatch').addEventListener('click',()=>watch().then(ok=>{if(ok)hideInGame();}));
+  const mount=$('stageSelectMount'), bezel=document.querySelector('.bezel');
+  const relocate=()=>{ const inStage=$('stage').classList.contains('on');(inStage?mount:bezel).appendChild(inGame); };
+  new MutationObserver(relocate).observe($('stage'),{attributes:true,attributeFilter:['class']});
+  $('bMenu').addEventListener('click',showInGame);
+  $('sMenu').addEventListener('click',showInGame);
+  $('screen').addEventListener('dblclick',()=>{if(inGame.hidden)showInGame();});
   sel.addEventListener('change', syncChoice);
-  $('tsbWatch').addEventListener('click',()=>watch());
+
   async function findGames() {
     st.textContent = 'Looking up games…';
     try {
@@ -4093,6 +4153,7 @@ requestAnimationFrame(tick);
       st.textContent = j.plays.length ? `${Gridiron.teamName(j.away)} at ${Gridiron.teamName(j.home)}: ${j.detail}. Watching for new plays…` : `${Gridiron.teamName(j.away)} at ${Gridiron.teamName(j.home)} hasn’t started. Waiting for kickoff…`;
       if (j.state !== 'post') timer = setInterval(poll, 5000);
       else st.textContent = `${Gridiron.teamName(j.away)} at ${Gridiron.teamName(j.home)} is final. Replaying ${j.plays.length} plays.`;
+      hideInGame();
       return true;
     } catch (e) { st.textContent = `Couldn’t load that game: ${e.message}.`; return false; }
   }
